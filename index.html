@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>QR to Arduino Cloud</title>
+  <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+</head>
+<body>
+  <h2>Scan QR Code and Send to Arduino Cloud</h2>
+  <input type="file" id="qrInput" accept="image/*;capture=camera">
+
+  <script>
+    const thingID = "YOUR_THING_ID";   // Replace with your Arduino Cloud Thing ID
+    const token = "YOUR_CLOUD_TOKEN";  // Replace with your Arduino Cloud API token
+
+    document.getElementById("qrInput").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      const img = await createImageBitmap(file);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+      if (code) {
+        console.log("QR Data:", code.data);
+
+        // Send QR data to Arduino Cloud
+        fetch(`https://api2.arduino.cc/iot/v2/things/${thingID}/properties/qrCodeResult`, {
+          method: "PUT",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ value: code.data })
+        })
+        .then(res => res.json())
+        .then(data => console.log("Cloud Response:", data))
+        .catch(err => console.error(err));
+      } else {
+        console.log("No QR code found in image.");
+      }
+    });
+  </script>
+</body>
+</html>
